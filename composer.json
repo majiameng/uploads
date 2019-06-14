@@ -18,7 +18,6 @@
         "tinymeng/tools": "^1.0.4",
         "qiniu/php-sdk": "v7.0.*",
         "aliyuncs/oss-sdk-php": "*",
-        "league/flysystem": "^1.0"
     },
     "autoload": {
         "psr-4": {

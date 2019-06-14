@@ -1,41 +1,117 @@
 <?php
-namespace tinymeng\OAuth2\Connector;
+namespace tinymeng\uploads\Connector;
+
 
 /**
- * 所有第三方登录必须支持的接口方法
+ * 所有第三方上传类必须支持的接口方法
  */
 interface GatewayInterface
 {
 
     /**
-     * Description:  得到跳转地址
-     * @author: JiaMeng <666@majiameng.com>
-     * Updater:
-     * @return mixed
+     * @const  VISIBILITY_PUBLIC  public visibility
      */
-    public function getRedirectUrl();
+    const VISIBILITY_PUBLIC = 'public';
 
     /**
-     * Description:  获取当前授权用户的openid标识
-     * @author: JiaMeng <666@majiameng.com>
-     * Updater:
-     * @return mixed
+     * @const  VISIBILITY_PRIVATE  private visibility
      */
-    public function openid();
+    const VISIBILITY_PRIVATE = 'private';
 
     /**
-     * Description:  获取格式化后的用户信息
-     * @author: JiaMeng <666@majiameng.com>
-     * Updater:
-     * @return mixed
+     * Write a new file.
+     *
+     * @param string $path
+     * @param string $contents
+     *
+     * @return array|false false on failure file meta data on success
      */
-    public function userInfo();
+    public function write($path, $contents);
 
     /**
-     * Description:  获取原始接口返回的用户信息
-     * @author: JiaMeng <666@majiameng.com>
-     * Updater:
-     * @return mixed
+     * Write a new file using a stream.
+     *
+     * @param string   $path
+     * @param resource $resource
+     *
+     * @return array|false false on failure file meta data on success
      */
-    public function getUserInfo();
+    public function writeStream($path, $resource);
+
+    /**
+     * Update a file.
+     *
+     * @param string $path
+     * @param string $contents
+     *
+     * @return array|false false on failure file meta data on success
+     */
+    public function update($path, $contents);
+
+    /**
+     * Update a file using a stream.
+     *
+     * @param string   $path
+     * @param resource $resource
+     *
+     * @return array|false false on failure file meta data on success
+     */
+    public function updateStream($path, $resource);
+
+    /**
+     * Rename a file.
+     *
+     * @param string $path
+     * @param string $newpath
+     *
+     * @return bool
+     */
+    public function rename($path, $newpath);
+
+    /**
+     * Copy a file.
+     *
+     * @param string $path
+     * @param string $newpath
+     *
+     * @return bool
+     */
+    public function copy($path, $newpath);
+
+    /**
+     * Delete a file.
+     *
+     * @param string $path
+     *
+     * @return bool
+     */
+    public function delete($path);
+
+    /**
+     * Delete a directory.
+     *
+     * @param string $dirname
+     *
+     * @return bool
+     */
+    public function deleteDir($dirname);
+
+    /**
+     * Create a directory.
+     *
+     * @param string $dirname directory name
+     *
+     * @return array|false
+     */
+    public function createDir($dirname);
+
+    /**
+     * Set the visibility for a file.
+     *
+     * @param string $path
+     * @param string $visibility
+     *
+     * @return array|false file meta data
+     */
+    public function setVisibility($path, $visibility);
 }

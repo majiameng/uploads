@@ -1,16 +1,21 @@
 <?php
 
 /**
- * 第三方登陆实例抽象类
+ * 第三方上传实例抽象类
  * @author: JiaMeng <666@majiameng.com>
  */
 
 namespace tinymeng\uploads;
 
-use tinymeng\OAuth2\Connector\GatewayInterface;
-use tinymeng\OAuth2\Helper\Str;
-
-abstract class Application
+use tinymeng\uploads\Connector\GatewayInterface;
+use tinymeng\payment\Gateways\Alipay;
+use tinymeng\payment\Gateways\Wechat;
+use tinymeng\uploads\Helper\Str;
+/**
+ * @method static \tinymeng\uploads\Gateways\Oss oss(array $config) 阿里云Oss
+ * @method static \tinymeng\uploads\Gateways\Qiniu qiniu(array $config) 七牛云
+ */
+abstract class Upload
 {
 
     /**
@@ -24,22 +29,17 @@ abstract class Application
      */
     protected static function init($gateway, $config = null)
     {
-        $baseConfig = [
-            'app_id'    => '',
-            'app_secret'=> '',
-            'callback'  => '',
-            'scope'     => '',
-        ];
+
         $gateway = Str::uFirst($gateway);
         $class = __NAMESPACE__ . '\\Gateways\\' . $gateway;
         if (class_exists($class)) {
-            $app = new $class(array_replace_recursive($baseConfig,$config));
+            $app = new $class($config);
             if ($app instanceof GatewayInterface) {
                 return $app;
             }
-            throw new \Exception("第三方登录基类 [$gateway] 必须继承抽象类 [GatewayInterface]");
+            throw new \Exception("第三方上传类基类 [$class] 必须继承父类 [tinymeng\uploads\Connector\GatewayInterface]");
         }
-        throw new \Exception("第三方登录基类 [$gateway] 不存在");
+        throw new \Exception("第三方上传基类 [$class] 不存在");
     }
 
     /**

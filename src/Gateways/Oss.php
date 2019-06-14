@@ -5,32 +5,25 @@
 // +----------------------------------------------------------------------
 // | OssAdapter.php: oss上传
 // +----------------------------------------------------------------------
-// | Author: yangyifan <yangyifanphp@gmail.com>
+// | Author: yangyifan <666@majiameng.com>
 // +----------------------------------------------------------------------
 
 
 namespace tinymeng\uploads\Gateways;
 
-use League\Flysystem\Adapter\AbstractAdapter;
-use League\Flysystem\Config;
-use Yangyifan\Library\PathLibrary;
-use Yangyifan\Upload\Functions\FileFunction;
 use Exception;
 use OSS\OssClient;
 use OSS\Core\OssException;
+use tinymeng\uploads\Connector\Gateway;
+use tinymeng\uploads\Helper\PathLibrary;
+use tinymeng\uploads\Helper\FileFunction;
 
-class Oss extends  AbstractAdapter
+class Oss extends  Gateway
 {
 
     const FILE_TYPE_FILE    = 'file';//类型是文件
     const FILE_TYPE_DIR     = 'dir';//类型是文件夹
 
-    /**
-     * 配置信息
-     *
-     * @var
-     */
-    protected $config;
 
     /**
      * oss client 上传对象
@@ -50,11 +43,23 @@ class Oss extends  AbstractAdapter
      * 构造方法
      *
      * @param array $config   配置信息
-     * @author yangyifan <yangyifanphp@gmail.com>
+     * @author yangyifan <666@majiameng.com>
      */
     public function __construct($config)
     {
-        $this->config   = $config;
+        $baseConfig = [
+            'accessKeyId'		=> '',
+            'accessKeySecret' 	=> '',
+            'endpoint'			=> '',
+            'isCName'			=> false,
+            'securityToken'		=> null,
+            'bucket'            => '',
+            'timeout'           => '5184000',
+            'connectTimeout'    => '10',
+            'transport'     	=> 'http',//如果支持https，请填写https，如果不支持请填写http
+            'max_keys'          => 1000,//max-keys用于限定此次返回object的最大数，如果不设定，默认为100，max-keys取值不能大于1000
+        ];
+        $this->config   = array_replace_recursive($baseConfig,$config);
         $this->bucket   = $this->config['bucket'];
         //设置路径前缀
         $this->setPathPrefix($this->config['transport'] . '://' . $this->config['bucket'] . '.' .  $this->config['endpoint']);
@@ -77,7 +82,7 @@ class Oss extends  AbstractAdapter
      * 获得OSS client上传对象
      *
      * @return \OSS\OssClient
-     * @author yangyifan <yangyifanphp@gmail.com>
+     * @author yangyifan <666@majiameng.com>
      */
     protected function getOss()
     {
@@ -115,7 +120,7 @@ class Oss extends  AbstractAdapter
      *
      * @param string $path
      * @return bool
-     * @author yangyifan <yangyifanphp@gmail.com>
+     * @author yangyifan <666@majiameng.com>
      */
     public function has($path)
     {
@@ -131,7 +136,7 @@ class Oss extends  AbstractAdapter
      * 读取文件
      *
      * @param $file_name
-     * @author yangyifan <yangyifanphp@gmail.com>
+     * @author yangyifan <666@majiameng.com>
      */
     public function read($path)
     {
@@ -149,7 +154,7 @@ class Oss extends  AbstractAdapter
      *
      * @param string $path
      * @return array|bool
-     * @author yangyifan <yangyifanphp@gmail.com>
+     * @author yangyifan <666@majiameng.com>
      */
     public function readStream($path)
     {
@@ -177,16 +182,16 @@ class Oss extends  AbstractAdapter
      *
      * @param $file_name
      * @param $contents
-     * @author yangyifan <yangyifanphp@gmail.com>
+     * @author yangyifan <666@majiameng.com>
      */
-    public function write($path, $contents, Config $config)
+    public function write($path, $contents)
     {
         try {
             $this->getOss()->putObject($this->bucket, $path, $contents, $option = []);
 
             return true;
         }catch (OssException $e){
-
+            var_dump($e->getMessage());
         }
         return false;
     }
@@ -196,9 +201,8 @@ class Oss extends  AbstractAdapter
      *
      * @param string $path
      * @param resource $resource
-     * @param array $config
      */
-    public function writeStream($path, $resource, Config $config)
+    public function writeStream($path, $resource)
     {
         try{
             //获得一个临时文件
@@ -212,8 +216,24 @@ class Oss extends  AbstractAdapter
             FileFunction::deleteTmpFile($tmpfname);
 
             return true;
+        } catch (OssException $e){
+            
         }
-        catch (OssException $e){
+        return false;
+    }
+
+    /**
+     * Name: 上传文件
+     * Author: Tinymeng <666@majiameng.com>
+     * @param $path
+     * @param $tmpfname
+     * @return bool
+     */
+    public function uploadFile($path, $tmpfname){
+        try{
+            $this->getOss()->uploadFile($this->bucket, $path, $tmpfname, $option = []);
+            return true;
+        } catch (OssException $e){
 
         }
         return false;
@@ -224,11 +244,10 @@ class Oss extends  AbstractAdapter
      *
      * @param string $path
      * @param string $contents
-     * @param array $config
      */
-    public function update($path, $contents, Config $config)
+    public function update($path, $contents)
     {
-        return $this->write($path, $contents, $config);
+        return $this->write($path, $contents);
     }
 
     /**
@@ -236,11 +255,10 @@ class Oss extends  AbstractAdapter
      *
      * @param string $path
      * @param resource $resource
-     * @param array $config
      */
-    public function updateStream($path, $resource, Config $config)
+    public function updateStream($path, $resource)
     {
-        return $this->writeStream($path, $resource, $config);
+        return $this->writeStream($path, $resource);
     }
 
     /**
@@ -249,7 +267,7 @@ class Oss extends  AbstractAdapter
      * @param string $directory
      * @param bool|false $recursive
      * @return array
-     * @author yangyifan <yangyifanphp@gmail.com>
+     * @author yangyifan <666@majiameng.com>
      */
     public function listContents($directory = '', $recursive = false)
     {
@@ -315,7 +333,7 @@ class Oss extends  AbstractAdapter
      *
      * @param $path
      * @return array|bool
-     * @author yangyifan <yangyifanphp@gmail.com>
+     * @author yangyifan <666@majiameng.com>
      */
     public function getMetadata($path)
     {
@@ -335,7 +353,7 @@ class Oss extends  AbstractAdapter
      *
      * @param string $path
      * @return array
-     * @author yangyifan <yangyifanphp@gmail.com>
+     * @author yangyifan <666@majiameng.com>
      */
     public function getSize($path)
     {
@@ -348,7 +366,7 @@ class Oss extends  AbstractAdapter
      *
      * @param string $path
      * @return mixed string|null
-     * @author yangyifan <yangyifanphp@gmail.com>
+     * @author yangyifan <666@majiameng.com>
      */
     public function getMimetype($path)
     {
@@ -361,7 +379,7 @@ class Oss extends  AbstractAdapter
      *
      * @param string $path
      * @return array 时间戳
-     * @author yangyifan <yangyifanphp@gmail.com>
+     * @author yangyifan <666@majiameng.com>
      */
     public function getTimestamp($path)
     {
@@ -375,7 +393,7 @@ class Oss extends  AbstractAdapter
      * 获得文件模式 (未实现)
      *
      * @param string $path
-     * @author yangyifan <yangyifanphp@gmail.com>
+     * @author yangyifan <666@majiameng.com>
      */
     public function getVisibility($path)
     {
@@ -388,7 +406,7 @@ class Oss extends  AbstractAdapter
      * @param $oldname
      * @param $newname
      * @return boolean
-     * @author yangyifan <yangyifanphp@gmail.com>
+     * @author yangyifan <666@majiameng.com>
      */
     public function rename($path, $newpath)
     {
@@ -414,7 +432,7 @@ class Oss extends  AbstractAdapter
      * @param $path
      * @param $newpath
      * @return boolean
-     * @author yangyifan <yangyifanphp@gmail.com>
+     * @author yangyifan <666@majiameng.com>
      */
     public function copy($path, $newpath)
     {
@@ -431,7 +449,7 @@ class Oss extends  AbstractAdapter
      * 删除文件或者文件夹
      *
      * @param $path
-     * @author yangyifan <yangyifanphp@gmail.com>
+     * @author yangyifan <666@majiameng.com>
      */
     public function delete($path)
     {
@@ -449,7 +467,7 @@ class Oss extends  AbstractAdapter
      *
      * @param string $path
      * @return mixed
-     * @author yangyifan <yangyifanphp@gmail.com>
+     * @author yangyifan <666@majiameng.com>
      */
     public function deleteDir($path)
     {
@@ -468,7 +486,7 @@ class Oss extends  AbstractAdapter
      * 递归删除全部文件
      *
      * @param $path
-     * @author yangyifan <yangyifanphp@gmail.com>
+     * @author yangyifan <666@majiameng.com>
      */
     protected function recursiveDelete($path)
     {
@@ -495,10 +513,9 @@ class Oss extends  AbstractAdapter
      * 创建文件夹
      *
      * @param string $dirname
-     * @param array $config
-     * @author yangyifan <yangyifanphp@gmail.com>
+     * @author yangyifan <666@majiameng.com>
      */
-    public function createDir($dirname, Config $config)
+    public function createDir($dirname)
     {
         try{
             $this->getOss()->createObjectDir($this->bucket, static::normalizerPath($dirname, true));
@@ -515,7 +532,7 @@ class Oss extends  AbstractAdapter
      * @param string $path
      * @param string $visibility
      * @return bool
-     * @author yangyifan <yangyifanphp@gmail.com>
+     * @author yangyifan <666@majiameng.com>
      */
     public function setVisibility($path, $visibility)
     {
