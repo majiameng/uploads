@@ -17,7 +17,7 @@
         "php": ">=5.4.0",
         "tinymeng/tools": "^1.0.4",
         "qiniu/php-sdk": "v7.0.*",
-        "aliyuncs/oss-sdk-php": "*",
+        "aliyuncs/oss-sdk-php": "*"
     },
     "autoload": {
         "psr-4": {
