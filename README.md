@@ -6,7 +6,7 @@
 ### 安装
 
 ```
-composer require tinymeng/uploads:~1.0.0 -vvv
+composer require tinymeng/uploads -vvv
 ```
 
 > 类库使用的命名空间为`\\tinymeng\\uploads`
