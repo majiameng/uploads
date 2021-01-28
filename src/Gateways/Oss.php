@@ -5,7 +5,7 @@
 // +----------------------------------------------------------------------
 // | OssAdapter.php: oss上传
 // +----------------------------------------------------------------------
-// | Author: yangyifan <666@majiameng.com>
+// | Author: Tinymeng <666@majiameng.com>
 // +----------------------------------------------------------------------
 
 
@@ -14,6 +14,8 @@ namespace tinymeng\uploads\Gateways;
 use Exception;
 use OSS\OssClient;
 use OSS\Core\OssException;
+use tinymeng\tools\exception\StatusCode;
+use tinymeng\uploads\exception\TinymengException;
 use tinymeng\uploads\Connector\Gateway;
 use tinymeng\uploads\Helper\PathLibrary;
 use tinymeng\uploads\Helper\FileFunction;
@@ -43,7 +45,7 @@ class Oss extends  Gateway
      * 构造方法
      *
      * @param array $config   配置信息
-     * @author yangyifan <666@majiameng.com>
+     * @author Tinymeng <666@majiameng.com>
      */
     public function __construct($config)
     {
@@ -82,7 +84,7 @@ class Oss extends  Gateway
      * 获得OSS client上传对象
      *
      * @return \OSS\OssClient
-     * @author yangyifan <666@majiameng.com>
+     * @author Tinymeng <666@majiameng.com>
      */
     protected function getOss()
     {
@@ -107,7 +109,6 @@ class Oss extends  Gateway
 
     /**
      * 获得 Oss 实例
-     *
      * @return OssClient
      */
     public function getInstance()
@@ -117,44 +118,43 @@ class Oss extends  Gateway
 
     /**
      * 判断文件是否存在
-     *
      * @param string $path
      * @return bool
-     * @author yangyifan <666@majiameng.com>
+     * @throws TinymengException
+     * @author Tinymeng <666@majiameng.com>
      */
     public function has($path)
     {
         try {
             return $this->getOss()->doesObjectExist($this->bucket, $path) != false ? true : false;
         }catch (OssException $e){
-
+            throw new TinymengException($e->getMessage());
         }
-        return false;
     }
 
     /**
      * 读取文件
-     *
-     * @param $file_name
-     * @author yangyifan <666@majiameng.com>
+     * @param $path
+     * @return array
+     * @throws TinymengException
+     * @internal param $file_name
+     * @author Tinymeng <666@majiameng.com>
      */
     public function read($path)
     {
         try {
             return ['contents' => $this->getOss()->getObject($this->bucket, static::normalizerPath($path)) ];
         }catch (OssException $e){
-
+            throw new TinymengException($e->getMessage());
         }
-        return false;
-
     }
 
     /**
      * 获得文件流
-     *
      * @param string $path
      * @return array|bool
-     * @author yangyifan <666@majiameng.com>
+     * @throws TinymengException
+     * @author Tinymeng <666@majiameng.com>
      */
     public function readStream($path)
     {
@@ -171,10 +171,8 @@ class Oss extends  Gateway
 
             return ['stream' => $handle];
         }catch (OssException $e){
-
+            throw new TinymengException($e->getMessage());
         }
-
-        return false;
     }
 
     /**
@@ -182,25 +180,23 @@ class Oss extends  Gateway
      *
      * @param $file_name
      * @param $contents
-     * @author yangyifan <666@majiameng.com>
+     * @author Tinymeng <666@majiameng.com>
      */
     public function write($path, $contents)
     {
         try {
-            $this->getOss()->putObject($this->bucket, $path, $contents, $option = []);
-
-            return true;
+            return $this->getOss()->putObject($this->bucket, $path, $contents, $option = []);
         }catch (OssException $e){
-            var_dump($e->getMessage());
+            throw new TinymengException($e->getMessage());
         }
-        return false;
     }
 
     /**
      * 写入文件流
-     *
      * @param string $path
      * @param resource $resource
+     * @return array|bool|false
+     * @throws TinymengException
      */
     public function writeStream($path, $resource)
     {
@@ -214,12 +210,10 @@ class Oss extends  Gateway
 
             //删除临时文件
             FileFunction::deleteTmpFile($tmpfname);
-
             return true;
         } catch (OssException $e){
-            
+            throw new TinymengException($e->getMessage());
         }
-        return false;
     }
 
     /**
@@ -228,22 +222,21 @@ class Oss extends  Gateway
      * @param $path
      * @param $tmpfname
      * @return bool
+     * @throws TinymengException
      */
     public function uploadFile($path, $tmpfname){
         try{
-            $this->getOss()->uploadFile($this->bucket, $path, $tmpfname, $option = []);
-            return true;
+            return $this->getOss()->uploadFile($this->bucket, $path, $tmpfname, $option = []);
         } catch (OssException $e){
-
+            throw new TinymengException($e->getMessage());
         }
-        return false;
     }
 
     /**
      * 更新文件
-     *
      * @param string $path
      * @param string $contents
+     * @return array|bool|false
      */
     public function update($path, $contents)
     {
@@ -252,25 +245,23 @@ class Oss extends  Gateway
 
     /**
      * 更新文件流
-     *
      * @param string $path
      * @param resource $resource
+     * @return array|bool|false
      */
-    public function updateStream($path, $resource)
-    {
+    public function updateStream($path, $resource){
         return $this->writeStream($path, $resource);
     }
 
     /**
      * 列出目录文件
-     *
      * @param string $directory
      * @param bool|false $recursive
      * @return array
-     * @author yangyifan <666@majiameng.com>
+     * @throws TinymengException
+     * @author Tinymeng <666@majiameng.com>
      */
-    public function listContents($directory = '', $recursive = false)
-    {
+    public function listContents($directory = '', $recursive = false){
         try{
             $directory = static::normalizerPath($directory, true);
 
@@ -323,17 +314,16 @@ class Oss extends  Gateway
 
             return $data;
         }catch (Exception $e){
-
+            throw new TinymengException($e->getMessage());
         }
-        return [];
     }
 
     /**
      * 获取资源的元信息，但不返回文件内容
-     *
      * @param $path
      * @return array|bool
-     * @author yangyifan <666@majiameng.com>
+     * @throws TinymengException
+     * @author Tinymeng <666@majiameng.com>
      */
     public function getMetadata($path)
     {
@@ -343,17 +333,16 @@ class Oss extends  Gateway
                 return $file_info;
             }
         }catch (OssException $e) {
-
+            throw new TinymengException($e->getMessage());
         }
         return false;
     }
 
     /**
      * 获得文件大小
-     *
      * @param string $path
      * @return array
-     * @author yangyifan <666@majiameng.com>
+     * @author Tinymeng <666@majiameng.com>
      */
     public function getSize($path)
     {
@@ -363,10 +352,9 @@ class Oss extends  Gateway
 
     /**
      * 获得文件Mime类型
-     *
      * @param string $path
      * @return mixed string|null
-     * @author yangyifan <666@majiameng.com>
+     * @author Tinymeng <666@majiameng.com>
      */
     public function getMimetype($path)
     {
@@ -376,13 +364,11 @@ class Oss extends  Gateway
 
     /**
      * 获得文件最后修改时间
-     *
      * @param string $path
      * @return array 时间戳
-     * @author yangyifan <666@majiameng.com>
+     * @author Tinymeng <666@majiameng.com>
      */
-    public function getTimestamp($path)
-    {
+    public function getTimestamp($path){
         $file_info = $this->getMetadata($path);
         return $file_info != false && !empty($file_info['last-modified'])
             ? ['timestamp' => strtotime($file_info['last-modified']) ]
@@ -391,22 +377,23 @@ class Oss extends  Gateway
 
     /**
      * 获得文件模式 (未实现)
-     *
      * @param string $path
-     * @author yangyifan <666@majiameng.com>
+     * @author Tinymeng <666@majiameng.com>
+     * @return string
      */
-    public function getVisibility($path)
-    {
+    public function getVisibility($path){
         return self::VISIBILITY_PUBLIC;
     }
 
     /**
      * 重命名文件
-     *
-     * @param $oldname
-     * @param $newname
-     * @return boolean
-     * @author yangyifan <666@majiameng.com>
+     * @param string $path
+     * @param string $newpath
+     * @return bool
+     * @throws TinymengException
+     * @internal param $oldname
+     * @internal param $newname
+     * @author Tinymeng <666@majiameng.com>
      */
     public function rename($path, $newpath)
     {
@@ -418,21 +405,20 @@ class Oss extends  Gateway
             $path = static::normalizerPath($path);
 
             $this->getOss()->copyObject($this->bucket, $path, $this->bucket, static::normalizerPath($newpath), []);
-            $this->delete($path);
-            return true;
+            return $this->delete($path);
         }catch (OssException $e){
-
+            throw new TinymengException($e->getMessage());
         }
-        return false;
     }
 
     /**
      * 复制文件
      *
-     * @param $path
-     * @param $newpath
-     * @return boolean
-     * @author yangyifan <666@majiameng.com>
+     * @param string $path
+     * @param string $newpath
+     * @return bool
+     * @throws TinymengException
+     * @author Tinymeng <666@majiameng.com>
      */
     public function copy($path, $newpath)
     {
@@ -440,53 +426,48 @@ class Oss extends  Gateway
             $this->getOss()->copyObject($this->bucket, $path, $this->bucket, static::normalizerPath($newpath), []);
             return true;
         }catch (OssException $e){
-
+            throw new TinymengException($e->getMessage());
         }
         return false;
     }
 
     /**
      * 删除文件或者文件夹
-     *
-     * @param $path
-     * @author yangyifan <666@majiameng.com>
+     * @param string $path
+     * @return bool
+     * @throws TinymengException
+     * @author Tinymeng <666@majiameng.com>
      */
     public function delete($path)
     {
         try{
-            $this->getOss()->deleteObject($this->bucket, $path);
-            return true;
+            return $this->getOss()->deleteObject($this->bucket, $path);
         }catch (OssException $e){
-
+            throw new TinymengException($e->getMessage());
         }
-        return false;
     }
 
     /**
      * 删除文件夹
-     *
      * @param string $path
      * @return mixed
-     * @author yangyifan <666@majiameng.com>
+     * @throws TinymengException
+     * @author Tinymeng <666@majiameng.com>
      */
     public function deleteDir($path)
     {
         try{
             //递归去删除全部文件
-            $this->recursiveDelete($path);
-
-            return true;
+            return $this->recursiveDelete($path);
         }catch (OssException $e){
-
+            throw new TinymengException($e->getMessage());
         }
-        return false;
     }
 
     /**
      * 递归删除全部文件
-     *
      * @param $path
-     * @author yangyifan <666@majiameng.com>
+     * @author Tinymeng <666@majiameng.com>
      */
     protected function recursiveDelete($path)
     {
@@ -511,28 +492,26 @@ class Oss extends  Gateway
 
     /**
      * 创建文件夹
-     *
      * @param string $dirname
-     * @author yangyifan <666@majiameng.com>
+     * @return array|false
+     * @throws TinymengException
+     * @author Tinymeng <666@majiameng.com>
      */
     public function createDir($dirname)
     {
         try{
-            $this->getOss()->createObjectDir($this->bucket, static::normalizerPath($dirname, true));
-            return true;
+            return $this->getOss()->createObjectDir($this->bucket, static::normalizerPath($dirname, true));
         }catch (OssException $e){
-
+            throw new TinymengException($e->getMessage());
         }
-        return false;
     }
 
     /**
      * 设置文件模式 (未实现)
-     *
      * @param string $path
      * @param string $visibility
      * @return bool
-     * @author yangyifan <666@majiameng.com>
+     * @author Tinymeng <666@majiameng.com>
      */
     public function setVisibility($path, $visibility)
     {
@@ -544,17 +523,17 @@ class Oss extends  Gateway
      * @param  string $file 文件名
      * @param  integer $expire_at 有效期，单位：秒
      * @return string
-     * @author qsnh <616896861@qq.com>
+     * @throws TinymengException
+     * @author Tinymeng <616896861@qq.com>
      */
     public function getUrl($file, $expire_at = 3600)
     {
         try {
             $accessUrl = $this->getOss()->signUrl($this->bucket, $file, $expire_at);
+            return $accessUrl;
         } catch (OssException $e) {
-            return false;
+            throw new TinymengException($e->getMessage());
         }
-
-        return $accessUrl;
     }
 
 }

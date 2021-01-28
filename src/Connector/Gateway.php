@@ -39,9 +39,7 @@ abstract class Gateway implements GatewayInterface
 
     /**
      * Set the path prefix.
-     *
      * @param string $prefix
-     *
      * @return void
      */
     public function setPathPrefix($prefix)
@@ -58,7 +56,6 @@ abstract class Gateway implements GatewayInterface
 
     /**
      * Get the path prefix.
-     *
      * @return string|null path prefix or null if pathPrefix is empty
      */
     public function getPathPrefix()
@@ -68,9 +65,7 @@ abstract class Gateway implements GatewayInterface
 
     /**
      * Prefix a path.
-     *
      * @param string $path
-     *
      * @return string prefixed path
      */
     public function applyPathPrefix($path)
@@ -80,9 +75,7 @@ abstract class Gateway implements GatewayInterface
 
     /**
      * Remove a path prefix.
-     *
      * @param string $path
-     *
      * @return string path without the prefix
      */
     public function removePathPrefix($path)
