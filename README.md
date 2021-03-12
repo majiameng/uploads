@@ -130,8 +130,7 @@ Tag v1.0.2
 1.增加oss上传设置元信息
 
 可直接下载的文件
-$option = [
-    OssClient::OSS_CONTENT_TYPE => 'application/octet-stream',
+$option = [ OssClient::OSS_CONTENT_TYPE => 'application/octet-stream',
 ];
 $oss_upload_result = $drive->uploadFile($save_file_path, $upload_path,$option);
 ```
