@@ -178,14 +178,17 @@ class Oss extends  Gateway
     /**
      * 写入文件
      *
-     * @param $file_name
+     * @param $path
      * @param $contents
+     * @param array $option
+     * @return mixed
+     * @throws TinymengException
      * @author Tinymeng <666@majiameng.com>
      */
-    public function write($path, $contents)
+    public function write($path, $contents,$option=[])
     {
         try {
-            return $this->getOss()->putObject($this->bucket, $path, $contents, $option = []);
+            return $this->getOss()->putObject($this->bucket, $path, $contents, $option);
         }catch (OssException $e){
             throw new TinymengException($e->getMessage());
         }
@@ -195,10 +198,11 @@ class Oss extends  Gateway
      * 写入文件流
      * @param string $path
      * @param resource $resource
+     * @param array $option
      * @return array|bool|false
      * @throws TinymengException
      */
-    public function writeStream($path, $resource)
+    public function writeStream($path, $resource, $option=[])
     {
         try{
             //获得一个临时文件
@@ -206,7 +210,7 @@ class Oss extends  Gateway
 
             file_put_contents($tmpfname, $resource);
 
-            $this->getOss()->uploadFile($this->bucket, $path, $tmpfname, $option = []);
+            $this->getOss()->uploadFile($this->bucket, $path, $tmpfname, $option);
 
             //删除临时文件
             FileFunction::deleteTmpFile($tmpfname);
@@ -224,9 +228,9 @@ class Oss extends  Gateway
      * @return bool
      * @throws TinymengException
      */
-    public function uploadFile($path, $tmpfname){
+    public function uploadFile($path, $tmpfname, $option = []){
         try{
-            return $this->getOss()->uploadFile($this->bucket, $path, $tmpfname, $option = []);
+            return $this->getOss()->uploadFile($this->bucket, $path, $tmpfname, $option);
         } catch (OssException $e){
             throw new TinymengException($e->getMessage());
         }

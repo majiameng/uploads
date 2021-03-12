@@ -125,6 +125,18 @@ use Storage;
 ### 版本修复
 
 2020-11-12 更新以下功能
+Tag v1.0.2
+```
+1.增加oss上传设置元信息
+
+可直接下载的文件
+$option = [
+    OssClient::OSS_CONTENT_TYPE => 'application/octet-stream',
+];
+$oss_upload_result = $drive->uploadFile($save_file_path, $upload_path,$option);
+```
+
+2020-11-12 更新以下功能
 Tag v1.0.1
 ```
 1.修改TinymengException异常类
