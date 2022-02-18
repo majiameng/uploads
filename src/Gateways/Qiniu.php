@@ -110,7 +110,7 @@ class Qiniu extends Gateway
      * @return UploadManager
      * @author tinymeng <666@majiameng.com>
      */
-    protected function getUploadManager()
+    protected function getClient()
     {
         if (!$this->uploadManager) {
             $this->uploadManager = new UploadManager();
@@ -124,7 +124,7 @@ class Qiniu extends Gateway
      */
     public function getInstance()
     {
-        return $this->getUploadManager();
+        return $this->getClient();
     }
     /**
      * 获得二进制流上传对象

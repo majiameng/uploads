@@ -14,6 +14,7 @@ use tinymeng\uploads\Helper\Str;
 /**
  * @method static \tinymeng\uploads\Gateways\Oss oss(array $config) 阿里云Oss
  * @method static \tinymeng\uploads\Gateways\Qiniu qiniu(array $config) 七牛云
+ * @method static \tinymeng\uploads\Gateways\Cos cos(array $config) 腾讯云Cos
  */
 abstract class Upload
 {

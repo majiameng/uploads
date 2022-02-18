@@ -17,19 +17,22 @@ composer require tinymeng/uploads -vvv
 
 ```
 .
-├── example                          代码源文件目录
-│   └── wx_proxy.php                微信多域名代理文件
 ├── src                              代码源文件目录
 │   ├── Connector
 │   │   ├── Gateway.php            必须继承的抽象类
 │   │   └── GatewayInterface.php   必须实现的接口
+│   ├── exception
+│   │   └── TinymengException.php
 │   ├── Gateways
-│   │   ├── Weibo.php
-│   │   └── Weixin.php
+│   │   ├── Cos.php
+│   │   └── Oss.php
+│   │   └── Qiniu.php
 │   ├── Helper
-│   │   ├── ConstCode.php          公共常量
-│   │   └── Str.php                字符串辅助类
-│   └── OAuth.php                   抽象实例类
+│   │   ├── FileFunction.php
+│   │   ├── MimeType.php
+│   │   ├── PathLibrary.php
+│   │   └── Str.php                 字符串辅助类
+│   └── Upload.php                   抽象实例类
 ├── composer.json                    composer文件
 ├── LICENSE                          MIT License
 └── README.md                        说明文件
@@ -119,6 +122,21 @@ use Storage;
     'max_keys'          => 1000,//max-keys用于限定此次返回object的最大数，如果不设定，默认为100，max-keys取值不能大于1000
 ],
 
+public Qcloud\Cos\Client upload(string $bucket, string $key, $body, array $options = array());
+
+'cos'	=> [
+    'accessKeyId'		=> '',
+    'accessKeySecret' 	=> '',
+    'bucket'			=> '',
+    'isCName'			=> false,
+    'securityToken'		=> null,
+    'bucket'            => '',
+    'timeout'           => '5184000',
+    'connectTimeout'    => '10',
+    'transport'     	=> 'http',//如果支持https，请填写https，如果不支持请填写http
+    'max_keys'          => 1000,//max-keys用于限定此次返回object的最大数，如果不设定，默认为100，max-keys取值不能大于1000
+],
+
 ```
 
 
@@ -130,7 +148,8 @@ Tag v1.0.2
 1.增加oss上传设置元信息
 
 可直接下载的文件
-$option = [ OssClient::OSS_CONTENT_TYPE => 'application/octet-stream',
+$option = [
+    OssClient::OSS_CONTENT_TYPE => 'application/octet-stream',
 ];
 $oss_upload_result = $drive->uploadFile($save_file_path, $upload_path,$option);
 ```

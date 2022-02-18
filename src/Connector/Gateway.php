@@ -22,6 +22,10 @@ abstract class Gateway implements GatewayInterface
      * @var string
      */
     protected $pathSeparator = '/';
+    /**
+     * @var 
+     */
+    protected $client;
 
 
     /**

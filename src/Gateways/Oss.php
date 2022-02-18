@@ -86,10 +86,10 @@ class Oss extends  Gateway
      * @return \OSS\OssClient
      * @author Tinymeng <666@majiameng.com>
      */
-    protected function getOss()
+    protected function getClient()
     {
-        if (!$this->upload) {
-            $this->upload = new OssClient(
+        if (!$this->client) {
+            $this->client = new OssClient(
                 $this->config['accessKeyId'],
                 $this->config['accessKeySecret'],
                 $this->config['endpoint'],
@@ -98,13 +98,13 @@ class Oss extends  Gateway
             );
 
             //设置请求超时时间
-            $this->upload->setTimeout($this->config['timeout']);
+            $this->client->setTimeout($this->config['timeout']);
 
             //设置连接超时时间
-            $this->upload->setConnectTimeout($this->config['connectTimeout']);
+            $this->client->setConnectTimeout($this->config['connectTimeout']);
         }
 
-        return $this->upload;
+        return $this->client;
     }
 
     /**
@@ -113,7 +113,7 @@ class Oss extends  Gateway
      */
     public function getInstance()
     {
-        return $this->getOss();
+        return $this->getClient();
     }
 
     /**
@@ -126,7 +126,7 @@ class Oss extends  Gateway
     public function has($path)
     {
         try {
-            return $this->getOss()->doesObjectExist($this->bucket, $path) != false ? true : false;
+            return $this->getClient()->doesObjectExist($this->bucket, $path) != false ? true : false;
         }catch (OssException $e){
             throw new TinymengException($e->getMessage());
         }
@@ -143,7 +143,7 @@ class Oss extends  Gateway
     public function read($path)
     {
         try {
-            return ['contents' => $this->getOss()->getObject($this->bucket, static::normalizerPath($path)) ];
+            return ['contents' => $this->getClient()->getObject($this->bucket, static::normalizerPath($path)) ];
         }catch (OssException $e){
             throw new TinymengException($e->getMessage());
         }
@@ -188,7 +188,7 @@ class Oss extends  Gateway
     public function write($path, $contents,$option=[])
     {
         try {
-            return $this->getOss()->putObject($this->bucket, $path, $contents, $option);
+            return $this->getClient()->putObject($this->bucket, $path, $contents, $option);
         }catch (OssException $e){
             throw new TinymengException($e->getMessage());
         }
@@ -210,7 +210,7 @@ class Oss extends  Gateway
 
             file_put_contents($tmpfname, $resource);
 
-            $this->getOss()->uploadFile($this->bucket, $path, $tmpfname, $option);
+            $this->getClient()->uploadFile($this->bucket, $path, $tmpfname, $option);
 
             //删除临时文件
             FileFunction::deleteTmpFile($tmpfname);
@@ -230,7 +230,7 @@ class Oss extends  Gateway
      */
     public function uploadFile($path, $tmpfname, $option = []){
         try{
-            return $this->getOss()->uploadFile($this->bucket, $path, $tmpfname, $option);
+            return $this->getClient()->uploadFile($this->bucket, $path, $tmpfname, $option);
         } catch (OssException $e){
             throw new TinymengException($e->getMessage());
         }
@@ -276,7 +276,7 @@ class Oss extends  Gateway
                 'marker'    => '',
             ];
 
-            $result_obj = $this->getOss()->listObjects($this->bucket, $options);
+            $result_obj = $this->getClient()->listObjects($this->bucket, $options);
 
             $file_list  = $result_obj->getObjectList();//文件列表
             $dir_list   = $result_obj->getPrefixList();//文件夹列表
@@ -332,7 +332,7 @@ class Oss extends  Gateway
     public function getMetadata($path)
     {
         try {
-            $file_info = $this->getOss()->getObjectMeta($this->bucket, $path);
+            $file_info = $this->getClient()->getObjectMeta($this->bucket, $path);
             if ( !empty($file_info) ) {
                 return $file_info;
             }
@@ -408,7 +408,7 @@ class Oss extends  Gateway
              */
             $path = static::normalizerPath($path);
 
-            $this->getOss()->copyObject($this->bucket, $path, $this->bucket, static::normalizerPath($newpath), []);
+            $this->getClient()->copyObject($this->bucket, $path, $this->bucket, static::normalizerPath($newpath), []);
             return $this->delete($path);
         }catch (OssException $e){
             throw new TinymengException($e->getMessage());
@@ -427,7 +427,7 @@ class Oss extends  Gateway
     public function copy($path, $newpath)
     {
         try {
-            $this->getOss()->copyObject($this->bucket, $path, $this->bucket, static::normalizerPath($newpath), []);
+            $this->getClient()->copyObject($this->bucket, $path, $this->bucket, static::normalizerPath($newpath), []);
             return true;
         }catch (OssException $e){
             throw new TinymengException($e->getMessage());
@@ -445,7 +445,7 @@ class Oss extends  Gateway
     public function delete($path)
     {
         try{
-            return $this->getOss()->deleteObject($this->bucket, $path);
+            return $this->getClient()->deleteObject($this->bucket, $path);
         }catch (OssException $e){
             throw new TinymengException($e->getMessage());
         }
@@ -491,7 +491,7 @@ class Oss extends  Gateway
             }
         }
 
-        $this->getOss()->deleteObject($this->bucket, $path);
+        $this->getClient()->deleteObject($this->bucket, $path);
     }
 
     /**
@@ -504,7 +504,7 @@ class Oss extends  Gateway
     public function createDir($dirname)
     {
         try{
-            return $this->getOss()->createObjectDir($this->bucket, static::normalizerPath($dirname, true));
+            return $this->getClient()->createObjectDir($this->bucket, static::normalizerPath($dirname, true));
         }catch (OssException $e){
             throw new TinymengException($e->getMessage());
         }
@@ -533,7 +533,7 @@ class Oss extends  Gateway
     public function getUrl($file, $expire_at = 3600)
     {
         try {
-            $accessUrl = $this->getOss()->signUrl($this->bucket, $file, $expire_at);
+            $accessUrl = $this->getClient()->signUrl($this->bucket, $file, $expire_at);
             return $accessUrl;
         } catch (OssException $e) {
             throw new TinymengException($e->getMessage());
