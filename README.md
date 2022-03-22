@@ -125,12 +125,12 @@ use Storage;
 public Qcloud\Cos\Client upload(string $bucket, string $key, $body, array $options = array());
 
 'cos'	=> [
-    'accessKeyId'		=> '',
-    'accessKeySecret' 	=> '',
-    'bucket'			=> '',
+    'secretId'	=> '',
+    'secretKey' => '',
+    'bucket'    => '',
+    'region' 	=> 'ap-beijing',
     'isCName'			=> false,
     'securityToken'		=> null,
-    'bucket'            => '',
     'timeout'           => '5184000',
     'connectTimeout'    => '10',
     'transport'     	=> 'http',//如果支持https，请填写https，如果不支持请填写http

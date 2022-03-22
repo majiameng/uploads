@@ -429,10 +429,14 @@ class Cos extends  Gateway
      * @throws TinymengException
      * @author Tinymeng <666@majiameng.com>
      */
-    public function delete($path)
+    public function delete($exampleobject)
     {
         try{
-            return $this->getClient()->deleteObject($this->bucket, $path);
+            $params = array(
+                'Bucket' => $this->bucket,
+                'Key' => $exampleobject
+            );
+            return $this->getClient()->deleteObject($params);
         }catch (Exception $e){
             throw new TinymengException($e->getMessage());
         }
