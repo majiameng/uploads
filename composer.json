@@ -15,7 +15,7 @@
     ],
     "require": {
         "php": ">=5.4.0",
-        "tinymeng/tools": "^1.1.3",
+        "tinymeng/tools": "^2.0",
         "qiniu/php-sdk": "v7.0.*",
         "aliyuncs/oss-sdk-php": "*",
         "qcloud/cos-sdk-v5": ">=2.0"

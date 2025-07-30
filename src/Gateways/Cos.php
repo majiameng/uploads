@@ -13,7 +13,6 @@ namespace tinymeng\uploads\Gateways;
 
 use Exception;
 use Qcloud\Cos\Client;
-use tinymeng\tools\exception\StatusCode;
 use tinymeng\uploads\exception\TinymengException;
 use tinymeng\uploads\Connector\Gateway;
 use tinymeng\uploads\Helper\PathLibrary;

@@ -14,7 +14,6 @@ namespace tinymeng\uploads\Gateways;
 use Exception;
 use OSS\OssClient;
 use OSS\Core\OssException;
-use tinymeng\tools\exception\StatusCode;
 use tinymeng\uploads\exception\TinymengException;
 use tinymeng\uploads\Connector\Gateway;
 use tinymeng\uploads\Helper\PathLibrary;
