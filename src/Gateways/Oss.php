@@ -568,18 +568,32 @@ class Oss extends  Gateway
      * @param  integer $expire_at 有效期，单位：秒（0 表示永久有效，使用路径前缀）
      * @return string
      * @throws TinymengException
-     * @author Tinymeng <616896861@qq.com>
+     * @author Tinymeng <879042886@qq.com>
      */
     public function getUrl($file, $expire_at = 3600)
     {
         try {
             $file = static::normalizerPath($file);
+
+            // 处理 endpoint，去除可能包含的协议
+            $endpoint = $this->config['endpoint'];
+            $endpoint = preg_replace('#^https?://#', '', $endpoint);
             
-            // 如果不需要签名 URL，使用路径前缀
-            if ($expire_at == 0) {
-                return $this->applyPathPrefix($file);
+            // 构建完整的基础 URL
+            // 如果使用自定义域名（isCName），直接使用 endpoint，否则使用 bucket.endpoint 格式
+            if (!empty($this->config['isCName'])) {
+                $baseUrl = rtrim($this->config['transport'] . '://' . $endpoint, '/');
+            } else {
+                $baseUrl = rtrim($this->config['transport'] . '://' . $this->config['bucket'] . '.' . $endpoint, '/');
             }
-            
+            $filePath = '/' . ltrim($file, '/');
+            $fullUrl = $baseUrl . $filePath;
+
+            // 如果不需要签名 URL，直接返回完整 URL
+            if ($expire_at == 0) {
+                return $fullUrl;
+            }
+
             // 生成签名 URL
             $accessUrl = $this->getClient()->signUrl($this->bucket, $file, $expire_at);
             return $accessUrl;

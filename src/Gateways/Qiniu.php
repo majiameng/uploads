@@ -14,6 +14,8 @@ use Qiniu\Storage\ResumeUploader;
 use Qiniu\Storage\UploadManager;
 use Qiniu\Storage\BucketManager;
 use Qiniu\Config AS QiniuConfig;
+use InvalidArgumentException;
+use tinymeng\uploads\Helper\MimeType;
 use tinymeng\uploads\Connector\Gateway;
 use tinymeng\uploads\Helper\PathLibrary;
 use tinymeng\uploads\Helper\FileFunction;
@@ -629,18 +631,23 @@ class Qiniu extends Gateway
     {
         $file = static::normalizerPath($file);
         
-        // 如果不需要签名 URL，使用路径前缀
+        // 构建完整的基础 URL
+        $baseUrl = rtrim($this->config['transport'] . '://' . $this->config['domain'], '/');
+        $filePath = '/' . ltrim($file, '/');
+        $fullUrl = $baseUrl . $filePath;
+        
+        // 如果不需要签名 URL，直接返回完整 URL
         if ($expire_at == 0) {
-            return $this->applyPathPrefix($file);
+            return $fullUrl;
         }
         
         // 生成签名 URL
         try {
-            $signedUrl = $this->auth->privateDownloadUrl($this->applyPathPrefix($file), $expire_at);
+            $signedUrl = $this->auth->privateDownloadUrl($fullUrl, $expire_at);
             return $signedUrl;
         } catch (Exception $e) {
             // 如果生成签名 URL 失败，返回普通 URL
-            return $this->applyPathPrefix($file);
+            return $fullUrl;
         }
     }
 }

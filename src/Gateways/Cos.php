@@ -656,7 +656,7 @@ class Cos extends  Gateway
      * @param  integer $expire_at 有效期，单位：秒（0 表示永久有效，使用配置的 urlPrefix）
      * @return string
      * @throws TinymengException
-     * @author Tinymeng <616896861@qq.com>
+     * @author Tinymeng <879042886@qq.com>
      */
     public function getUrl($file, $expire_at = 3600)
     {
