@@ -187,6 +187,7 @@ class Oss extends  Gateway
     public function write($path, $contents,$option=[])
     {
         try {
+            $path = static::normalizerPath($path);
             return $this->getClient()->putObject($this->bucket, $path, $contents, $option);
         }catch (OssException $e){
             throw new TinymengException($e->getMessage());
@@ -204,10 +205,13 @@ class Oss extends  Gateway
     public function writeStream($path, $resource, $option=[])
     {
         try{
+            $path = static::normalizerPath($path);
             //获得一个临时文件
-            $tmpfname       = FileFunction::getTmpFile();
+            $tmpfname = FileFunction::getTmpFile();
 
-            file_put_contents($tmpfname, $resource);
+            // 将资源流写入临时文件
+            $contents = stream_get_contents($resource);
+            file_put_contents($tmpfname, $contents);
 
             $this->getClient()->uploadFile($this->bucket, $path, $tmpfname, $option);
 
@@ -224,12 +228,46 @@ class Oss extends  Gateway
      * Author: Tinymeng <666@majiameng.com>
      * @param $path
      * @param $tmpfname
-     * @return bool
+     * @param array $option
+     * @return array 返回文件信息，包含 url, etag, size 等
      * @throws TinymengException
      */
     public function uploadFile($path, $tmpfname, $option = []){
         try{
-            return $this->getClient()->uploadFile($this->bucket, $path, $tmpfname, $option);
+            $path = static::normalizerPath($path);
+            if (!file_exists($tmpfname)) {
+                throw new TinymengException("文件不存在: {$tmpfname}");
+            }
+            
+            $result = $this->getClient()->uploadFile($this->bucket, $path, $tmpfname, $option);
+            
+            if ($result === null || $result === false) {
+                throw new TinymengException("文件上传失败");
+            }
+            
+            // 构建返回信息
+            $fileInfo = [
+                'success' => true,
+                'path' => $path,
+                'key' => $path,
+                'etag' => isset($result['etag']) ? trim($result['etag'], '"') : '',
+                'size' => filesize($tmpfname),
+            ];
+            
+            // 获取文件 URL
+            try {
+                $fileInfo['url'] = $this->getUrl($path, 0); // 0 表示永久 URL
+            } catch (Exception $e) {
+                // 如果获取 URL 失败，使用路径前缀构建 URL
+                $fileInfo['url'] = $this->applyPathPrefix($path);
+            }
+            
+            // 添加其他可能的响应信息
+            if (isset($result['x-oss-request-id'])) {
+                $fileInfo['request_id'] = $result['x-oss-request-id'];
+            }
+            
+            return $fileInfo;
         } catch (OssException $e){
             throw new TinymengException($e->getMessage());
         }
@@ -331,6 +369,7 @@ class Oss extends  Gateway
     public function getMetadata($path)
     {
         try {
+            $path = static::normalizerPath($path);
             $file_info = $this->getClient()->getObjectMeta($this->bucket, $path);
             if ( !empty($file_info) ) {
                 return $file_info;
@@ -426,12 +465,13 @@ class Oss extends  Gateway
     public function copy($path, $newpath)
     {
         try {
-            $this->getClient()->copyObject($this->bucket, $path, $this->bucket, static::normalizerPath($newpath), []);
+            $path = static::normalizerPath($path);
+            $newpath = static::normalizerPath($newpath);
+            $this->getClient()->copyObject($this->bucket, $path, $this->bucket, $newpath, []);
             return true;
         }catch (OssException $e){
             throw new TinymengException($e->getMessage());
         }
-        return false;
     }
 
     /**
@@ -444,6 +484,7 @@ class Oss extends  Gateway
     public function delete($path)
     {
         try{
+            $path = static::normalizerPath($path);
             return $this->getClient()->deleteObject($this->bucket, $path);
         }catch (OssException $e){
             throw new TinymengException($e->getMessage());
@@ -524,7 +565,7 @@ class Oss extends  Gateway
     /**
      * 获取当前文件的URL访问路径
      * @param  string $file 文件名
-     * @param  integer $expire_at 有效期，单位：秒
+     * @param  integer $expire_at 有效期，单位：秒（0 表示永久有效，使用路径前缀）
      * @return string
      * @throws TinymengException
      * @author Tinymeng <616896861@qq.com>
@@ -532,6 +573,14 @@ class Oss extends  Gateway
     public function getUrl($file, $expire_at = 3600)
     {
         try {
+            $file = static::normalizerPath($file);
+            
+            // 如果不需要签名 URL，使用路径前缀
+            if ($expire_at == 0) {
+                return $this->applyPathPrefix($file);
+            }
+            
+            // 生成签名 URL
             $accessUrl = $this->getClient()->signUrl($this->bucket, $file, $expire_at);
             return $accessUrl;
         } catch (OssException $e) {

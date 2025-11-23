@@ -52,10 +52,12 @@ use Storage;
         $config = [
               'accessKeyId'		=> '',
               'accessKeySecret' 	=> '',
-              'endpoint'			=> '',
+
               'isCName'			=> false,
               'securityToken'		=> null,
               'bucket'            => '',
+              'endpoint'			=> '',// 阿里云地域地址，OSS必填
+              'region' 	=> 'ap-beijing',// 存储桶所在地域，COS必须字段
               'timeout'           => '5184000',
               'connectTimeout'    => '10',
               'transport'     	=> 'http',//如果支持https，请填写https，如果不支持请填写http
@@ -97,19 +99,65 @@ use Storage;
 
 ###### 配置信息
 
+### 方式一：使用配置文件（推荐）
 
+在 `vendor/tinymeng/uploads/config/TUploads.php` 中配置默认参数：
+
+```php
+return [
+    'default' => 'oss',  // 默认使用的存储驱动
+    
+    'oss' => [
+        'accessKeyId'     => '',
+        'accessKeySecret' => '',
+        'endpoint'        => '',
+        'bucket'          => '',
+        // ... 其他配置
+    ],
+    
+    'cos' => [
+        'secretId'  => '',
+        'secretKey' => '',
+        'bucket'    => '',
+        'region'    => 'ap-beijing',
+        // ... 其他配置
+    ],
+    
+    'qiniu' => [
+        'domain'     => '',
+        'access_key' => '',
+        'secret_key' => '',
+        'bucket'     => '',
+        // ... 其他配置
+    ],
+];
 ```
 
-'qiniu' => [
+使用配置文件时，可以直接调用，配置会自动加载：
+
+```php
+// 使用配置文件中的默认配置
+$drive = Upload::oss();
+
+// 或者覆盖部分配置
+$drive = Upload::oss(['bucket' => 'my-bucket']);
+```
+
+### 方式二：直接传入配置
+
+```php
+// 七牛云配置
+$qiniuConfig = [
     'driver'        => 'qiniu',
     'domain'        => '',//你的七牛域名
     'access_key'    => '',//AccessKey
     'secret_key'    => '',//SecretKey
     'bucket'        => '',//Bucket名字
     'transport'     => 'http',//如果支持https，请填写https，如果不支持请填写http
-],
+];
 
-'oss'	=> [
+// 阿里云OSS配置
+$ossConfig = [
     'accessKeyId'		=> '',
     'accessKeySecret' 	=> '',
     'endpoint'			=> '',
@@ -120,11 +168,10 @@ use Storage;
     'connectTimeout'    => '10',
     'transport'     	=> 'http',//如果支持https，请填写https，如果不支持请填写http
     'max_keys'          => 1000,//max-keys用于限定此次返回object的最大数，如果不设定，默认为100，max-keys取值不能大于1000
-],
+];
 
-public Qcloud\Cos\Client upload(string $bucket, string $key, $body, array $options = array());
-
-'cos'	=> [
+// 腾讯云COS配置
+$cosConfig = [
     'secretId'	=> '',
     'secretKey' => '',
     'bucket'    => '',
@@ -135,8 +182,11 @@ public Qcloud\Cos\Client upload(string $bucket, string $key, $body, array $optio
     'connectTimeout'    => '10',
     'transport'     	=> 'http',//如果支持https，请填写https，如果不支持请填写http
     'max_keys'          => 1000,//max-keys用于限定此次返回object的最大数，如果不设定，默认为100，max-keys取值不能大于1000
-],
-
+    // 兼容字段（会自动映射）
+    'accessKeyId'       => '',  // 兼容字段，会自动映射到 secretId
+    'accessKeySecret'   => '',  // 兼容字段，会自动映射到 secretKey
+    'urlPrefix'         => '',  // 自定义域名前缀
+];
 ```
 
 

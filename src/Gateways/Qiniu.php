@@ -14,11 +14,10 @@ use Qiniu\Storage\ResumeUploader;
 use Qiniu\Storage\UploadManager;
 use Qiniu\Storage\BucketManager;
 use Qiniu\Config AS QiniuConfig;
-use InvalidArgumentException;
-use tinymeng\uploads\Helper\MimeType;
 use tinymeng\uploads\Connector\Gateway;
 use tinymeng\uploads\Helper\PathLibrary;
 use tinymeng\uploads\Helper\FileFunction;
+use tinymeng\uploads\exception\TinymengException;
 
 class Qiniu extends Gateway
 {
@@ -171,50 +170,166 @@ class Qiniu extends Gateway
     /**
      * 读取文件
      *
-     * @param $file_name
+     * @param string $path
+     * @return array
+     * @throws TinymengException
      * @author tinymeng <666@majiameng.com>
      */
     public function read($path)
     {
-        return ['contents' => file_get_contents($this->applyPathPrefix($path)) ];
+        try {
+            $url = $this->applyPathPrefix(static::normalizerPath($path));
+            $contents = file_get_contents($url);
+            if ($contents === false) {
+                throw new TinymengException("文件读取失败: {$path}");
+            }
+            return ['contents' => $contents];
+        } catch (Exception $e) {
+            if ($e instanceof TinymengException) {
+                throw $e;
+            }
+            throw new TinymengException($e->getMessage());
+        }
     }
     /**
      * 获得文件流
      *
      * @param string $path
      * @return array
+     * @throws TinymengException
      * @author tinymeng <666@majiameng.com>
      */
     public function readStream($path)
     {
-        return ['stream' => fopen($this->applyPathPrefix($path), 'r')];
+        try {
+            $url = $this->applyPathPrefix(static::normalizerPath($path));
+            $handle = fopen($url, 'r');
+            if ($handle === false) {
+                throw new TinymengException("文件流读取失败: {$path}");
+            }
+            return ['stream' => $handle];
+        } catch (Exception $e) {
+            if ($e instanceof TinymengException) {
+                throw $e;
+            }
+            throw new TinymengException($e->getMessage());
+        }
     }
     /**
      * 写入文件
      *
-     * @param $file_name
-     * @param $contents
+     * @param string $path
+     * @param string $contents
+     * @param array $option
+     * @return array|bool|false
+     * @throws TinymengException
      * @author tinymeng <666@majiameng.com>
      */
-    public function write($path, $contents)
+    public function write($path, $contents, $option = [])
     {
-        list(, $error) = $this->getUploadManager()->put($this->token, static::normalizerPath($path), $contents);
-        if ($error) {
-            return false;
+        try {
+            list($result, $error) = $this->getClient()->put($this->token, static::normalizerPath($path), $contents, $option);
+            if ($error) {
+                throw new TinymengException("文件写入失败: " . $error->message());
+            }
+            return $result !== null ? $result : true;
+        } catch (Exception $e) {
+            if ($e instanceof TinymengException) {
+                throw $e;
+            }
+            throw new TinymengException($e->getMessage());
         }
-        return true;
     }
     /**
      * 写入文件流
      *
      * @param string $path
      * @param resource $resource
+     * @param array $option
+     * @return array|bool|false
+     * @throws TinymengException
      */
-    public function writeStream($path, $resource)
+    public function writeStream($path, $resource, $option = [])
     {
-        $config->set('mimetype', MimeType::detectByContent(fgets($resource)));
-        list(, $error) = $this->getResumeUpload(static::normalizerPath($path), $resource, $config)->upload();
-        return $error ? false : true;
+        try {
+            //获得一个临时文件
+            $tmpfname = FileFunction::getTmpFile();
+            
+            // 将资源流写入临时文件
+            $contents = stream_get_contents($resource);
+            file_put_contents($tmpfname, $contents);
+            
+            // 读取文件内容并上传
+            $fileContent = file_get_contents($tmpfname);
+            list($result, $error) = $this->getClient()->put($this->token, static::normalizerPath($path), $fileContent, $option);
+            
+            //删除临时文件
+            FileFunction::deleteTmpFile($tmpfname);
+            
+            if ($error) {
+                throw new TinymengException("文件流写入失败: " . $error->message());
+            }
+            return $result !== null ? $result : true;
+        } catch (Exception $e) {
+            if ($e instanceof TinymengException) {
+                throw $e;
+            }
+            throw new TinymengException($e->getMessage());
+        }
+    }
+    /**
+     * Name: 上传文件
+     * Author: Tinymeng <666@majiameng.com>
+     * @param $path
+     * @param $tmpfname
+     * @param array $option
+     * @return array 返回文件信息，包含 url, etag, size 等
+     * @throws TinymengException
+     */
+    public function uploadFile($path, $tmpfname, $option = [])
+    {
+        try {
+            $path = static::normalizerPath($path);
+            if (!file_exists($tmpfname)) {
+                throw new TinymengException("文件不存在: {$tmpfname}");
+            }
+            
+            // 读取文件内容
+            $fileContent = file_get_contents($tmpfname);
+            
+            // 上传文件
+            list($result, $error) = $this->getClient()->put($this->token, $path, $fileContent, $option);
+            
+            if ($error) {
+                throw new TinymengException("文件上传失败: " . $error->message());
+            }
+            
+            // 构建返回信息
+            $fileInfo = [
+                'success' => true,
+                'path' => $path,
+                'key' => $path,
+                'etag' => isset($result['hash']) ? $result['hash'] : '',
+                'size' => filesize($tmpfname),
+            ];
+            
+            // 获取文件 URL
+            try {
+                $fileInfo['url'] = $this->getUrl($path, 0); // 0 表示永久 URL
+            } catch (Exception $e) {
+                // 如果获取 URL 失败，使用路径前缀构建 URL
+                $fileInfo['url'] = $this->applyPathPrefix($path);
+            }
+            
+            // 添加其他可能的响应信息
+            if (isset($result['key'])) {
+                $fileInfo['key'] = $result['key'];
+            }
+            
+            return $fileInfo;
+        } catch (Exception $e) {
+            throw new TinymengException($e->getMessage());
+        }
     }
     /**
      * 更新文件
@@ -231,81 +346,145 @@ class Qiniu extends Gateway
      *
      * @param string $path
      * @param resource $resource
+     * @param array $option
+     * @return array|bool|false
+     * @throws TinymengException
      */
-    public function updateStream($path, $resource)
+    public function updateStream($path, $resource, $option = [])
     {
-        return $this->writeStream($path, $resource);
+        return $this->writeStream($path, $resource, $option);
     }
     /**
      * 列出目录文件
      *
      * @param string $directory
      * @param bool|false $recursive
-     * @return mixed
+     * @return array
+     * @throws TinymengException
      * @author tinymeng <666@majiameng.com>
      */
     public function listContents($directory = '', $recursive = false)
     {
-        list($file_list, $marker, $error) = $this->getBucketManager()->listFiles($this->bucket, static::normalizerPath($directory));
-        if (!$error) {
-            foreach ($file_list as &$file) {
-                $file['path']   = $file['key'];
-                $file['marker'] = $marker;//用于下次请求的标识符
+        try {
+            list($file_list, $marker, $error) = $this->getBucketManager()->listFiles($this->bucket, static::normalizerPath($directory));
+            if ($error) {
+                throw new TinymengException("列出目录文件失败: " . $error->message());
             }
-            return $file_list;
+            $data = [];
+            if (is_array($file_list)) {
+                foreach ($file_list as &$file) {
+                    $data[] = [
+                        'path'   => $file['key'],
+                        'marker' => $marker, //用于下次请求的标识符
+                        'file_type' => isset($file['type']) ? $file['type'] : 'file',
+                        'file_size' => isset($file['fsize']) ? $file['fsize'] : 0,
+                        'last_modified' => isset($file['putTime']) ? $file['putTime'] : '',
+                    ];
+                }
+            }
+            return $data;
+        } catch (Exception $e) {
+            if ($e instanceof TinymengException) {
+                throw $e;
+            }
+            throw new TinymengException($e->getMessage());
         }
-        return false;
     }
     /**
      * 获取资源的元信息，但不返回文件内容
      *
-     * @param $path
-     * @return mixed
+     * @param string $path
+     * @return array|bool
+     * @throws TinymengException
      * @author tinymeng <666@majiameng.com>
      */
     public function getMetadata($path)
     {
-        list($info, $error) = $this->getBucketManager()->stat($this->bucket, static::normalizerPath($path));
-        if ($error) {
-            return false;
+        try {
+            list($info, $error) = $this->getBucketManager()->stat($this->bucket, static::normalizerPath($path));
+            if ($error) {
+                return false;
+            }
+            return $info;
+        } catch (Exception $e) {
+            throw new TinymengException($e->getMessage());
         }
-        return $info;
     }
     /**
      * 获得文件大小
      *
      * @param string $path
      * @return array
+     * @throws TinymengException
      * @author tinymeng <666@majiameng.com>
      */
     public function getSize($path)
     {
-        list($fsize, , , ) = array_values($this->getMetadata($path));
-        return $fsize > 0 ? [ 'size' => $fsize ] : ['size' => 0];
+        try {
+            $file_info = $this->getMetadata($path);
+            if ($file_info === false) {
+                return ['size' => 0];
+            }
+            $fsize = isset($file_info['fsize']) ? $file_info['fsize'] : 0;
+            return $fsize > 0 ? [ 'size' => $fsize ] : ['size' => 0];
+        } catch (Exception $e) {
+            if ($e instanceof TinymengException) {
+                throw $e;
+            }
+            throw new TinymengException($e->getMessage());
+        }
     }
     /**
      * 获得文件Mime类型
      *
      * @param string $path
-     * @return mixed string|null
+     * @return array|false
+     * @throws TinymengException
      * @author tinymeng <666@majiameng.com>
      */
     public function getMimetype($path)
     {
-        list(, , $mimeType,) = array_values($this->getMetadata($path));
-        return !empty($mimeType) ? ['mimetype' => $mimeType ] : ['mimetype' => ''];
+        try {
+            $file_info = $this->getMetadata($path);
+            if ($file_info === false) {
+                return false;
+            }
+            $mimeType = isset($file_info['mimeType']) ? $file_info['mimeType'] : '';
+            return !empty($mimeType) ? ['mimetype' => $mimeType ] : false;
+        } catch (Exception $e) {
+            if ($e instanceof TinymengException) {
+                throw $e;
+            }
+            throw new TinymengException($e->getMessage());
+        }
     }
     /**
      * 获得文件最后修改时间
      *
      * @param string $path
-     * @return mixed 时间戳
+     * @return array 时间戳
+     * @throws TinymengException
      * @author tinymeng <666@majiameng.com>
      */
     public function getTimestamp($path)
     {
-        list(, , , $timestamp) = array_values($this->getMetadata($path));
-        return !empty($timestamp) ? ['timestamp' => substr($timestamp, 0, -7) ] : ['timestamp' => 0];
+        try {
+            $file_info = $this->getMetadata($path);
+            if ($file_info === false) {
+                return ['timestamp' => 0];
+            }
+            $timestamp = isset($file_info['putTime']) ? $file_info['putTime'] : 0;
+            // 七牛的 putTime 是微秒时间戳，需要转换为秒
+            if ($timestamp > 0) {
+                $timestamp = intval($timestamp / 10000000);
+            }
+            return $timestamp > 0 ? ['timestamp' => $timestamp] : ['timestamp' => 0];
+        } catch (Exception $e) {
+            if ($e instanceof TinymengException) {
+                throw $e;
+            }
+            throw new TinymengException($e->getMessage());
+        }
     }
     /**
      * 获得文件模式 (未实现)
@@ -320,57 +499,101 @@ class Qiniu extends Gateway
     /**
      * 重命名文件
      *
-     * @param $oldname
-     * @param $newname
-     * @return boolean
+     * @param string $path
+     * @param string $newpath
+     * @return bool
+     * @throws TinymengException
      * @author tinymeng <666@majiameng.com>
      */
     public function rename($path, $newpath)
     {
-        return $this->getBucketManager()->rename($this->bucket, static::normalizerPath($path), static::normalizerPath($newpath)) == null
-            ? true
-            : false;
+        try {
+            $error = $this->getBucketManager()->rename($this->bucket, static::normalizerPath($path), static::normalizerPath($newpath));
+            if ($error !== null) {
+                throw new TinymengException("文件重命名失败: " . $error->message());
+            }
+            return true;
+        } catch (Exception $e) {
+            if ($e instanceof TinymengException) {
+                throw $e;
+            }
+            throw new TinymengException($e->getMessage());
+        }
     }
     /**
      * 复制文件
      *
-     * @param $path
-     * @param $newpath
-     * @return boolean
+     * @param string $path
+     * @param string $newpath
+     * @return bool
+     * @throws TinymengException
      * @author tinymeng <666@majiameng.com>
      */
     public function copy($path, $newpath)
     {
-        return $this->getBucketManager()->copy($this->bucket, static::normalizerPath($path), $this->bucket, static::normalizerPath($newpath)) == null
-            ? true
-            : false;
+        try {
+            $error = $this->getBucketManager()->copy($this->bucket, static::normalizerPath($path), $this->bucket, static::normalizerPath($newpath));
+            if ($error !== null) {
+                throw new TinymengException("文件复制失败: " . $error->message());
+            }
+            return true;
+        } catch (Exception $e) {
+            if ($e instanceof TinymengException) {
+                throw $e;
+            }
+            throw new TinymengException($e->getMessage());
+        }
     }
     /**
      * 删除文件或者文件夹
      *
-     * @param $path
+     * @param string $path
+     * @return bool
+     * @throws TinymengException
      * @author tinymeng <666@majiameng.com>
      */
     public function delete($path)
     {
-        return $this->getBucketManager()->delete($this->bucket, static::normalizerPath($path)) == null ? true : false;
+        try {
+            $error = $this->getBucketManager()->delete($this->bucket, static::normalizerPath($path));
+            if ($error !== null) {
+                throw new TinymengException("文件删除失败: " . $error->message());
+            }
+            return true;
+        } catch (Exception $e) {
+            if ($e instanceof TinymengException) {
+                throw $e;
+            }
+            throw new TinymengException($e->getMessage());
+        }
     }
     /**
      * 删除文件夹
      *
      * @param string $path
-     * @return mixed
+     * @return bool
+     * @throws TinymengException
      * @author tinymeng <666@majiameng.com>
      */
     public function deleteDir($path)
     {
-        list($file_list, , $error) = $this->getBucketManager()->listFiles($this->bucket, static::normalizerPath($path));
-        if (!$error) {
-            foreach ( $file_list as $file) {
-                $this->delete($file['key']);
+        try {
+            list($file_list, , $error) = $this->getBucketManager()->listFiles($this->bucket, static::normalizerPath($path));
+            if ($error) {
+                throw new TinymengException("列出目录文件失败: " . $error->message());
             }
+            if (is_array($file_list)) {
+                foreach ($file_list as $file) {
+                    $this->delete($file['key']);
+                }
+            }
+            return true;
+        } catch (Exception $e) {
+            if ($e instanceof TinymengException) {
+                throw $e;
+            }
+            throw new TinymengException($e->getMessage());
         }
-        return true;
     }
 
     /**
@@ -398,12 +621,26 @@ class Qiniu extends Gateway
     /**
      * 获取当前文件的URL访问路径
      *
-     * @param $file
-     * @param int $expire_at
-     * @return mixed
+     * @param string $file 文件名
+     * @param int $expire_at 有效期，单位：秒（0 表示永久有效，使用路径前缀）
+     * @return string
      */
     public function getUrl($file, $expire_at = 3600)
     {
-        return $this->applyPathPrefix($file);
+        $file = static::normalizerPath($file);
+        
+        // 如果不需要签名 URL，使用路径前缀
+        if ($expire_at == 0) {
+            return $this->applyPathPrefix($file);
+        }
+        
+        // 生成签名 URL
+        try {
+            $signedUrl = $this->auth->privateDownloadUrl($this->applyPathPrefix($file), $expire_at);
+            return $signedUrl;
+        } catch (Exception $e) {
+            // 如果生成签名 URL 失败，返回普通 URL
+            return $this->applyPathPrefix($file);
+        }
     }
 }

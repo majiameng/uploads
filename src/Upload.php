@@ -7,14 +7,17 @@
 
 namespace tinymeng\uploads;
 
+// 目录入口
+if (!defined('UPLOADS_ROOT_PATH')) {
+    define('UPLOADS_ROOT_PATH', dirname(__DIR__));
+}
+
 use tinymeng\uploads\Connector\GatewayInterface;
-use tinymeng\payment\Gateways\Alipay;
-use tinymeng\payment\Gateways\Wechat;
 use tinymeng\uploads\Helper\Str;
 /**
- * @method static \tinymeng\uploads\Gateways\Oss oss(array $config) 阿里云Oss
- * @method static \tinymeng\uploads\Gateways\Qiniu qiniu(array $config) 七牛云
- * @method static \tinymeng\uploads\Gateways\Cos cos(array $config) 腾讯云Cos
+ * @method static \tinymeng\uploads\Gateways\Oss oss(array|null $config) 阿里云Oss
+ * @method static \tinymeng\uploads\Gateways\Qiniu qiniu(array|null $config) 七牛云
+ * @method static \tinymeng\uploads\Gateways\Cos cos(array|null $config) 腾讯云Cos
  */
 abstract class Upload
 {
@@ -30,11 +33,28 @@ abstract class Upload
      */
     protected static function init($gateway, $config = null)
     {
-
         $gateway = Str::uFirst($gateway);
         $class = __NAMESPACE__ . '\\Gateways\\' . $gateway;
         if (class_exists($class)) {
-            $app = new $class($config);
+            // 加载配置文件
+            $configFile = UPLOADS_ROOT_PATH . "/config/TUploads.php";
+            $baseConfig = [];
+            if (file_exists($configFile)) {
+                $allConfig = require $configFile;
+                // 获取对应驱动的默认配置
+                $driver = strtolower($gateway);
+                if (isset($allConfig[$driver])) {
+                    $baseConfig = $allConfig[$driver];
+                }
+            }
+            
+            // 合并配置：用户配置优先
+            if ($config === null) {
+                $config = [];
+            }
+            $finalConfig = array_replace_recursive($baseConfig, $config);
+            
+            $app = new $class($finalConfig);
             if ($app instanceof GatewayInterface) {
                 return $app;
             }
@@ -53,7 +73,8 @@ abstract class Upload
      */
     public static function __callStatic($gateway, $config)
     {
-        return self::init($gateway, ...$config);
+        $config = isset($config[0]) ? $config[0] : null;
+        return self::init($gateway, $config);
     }
 
 }
