@@ -1,3 +1,13 @@
+<h1 align="center">tinymeng/uploads</h1>
+<p align="center">
+
+<a href="https://scrutinizer-ci.com/g/majiameng/uploads/?branch=master"><img src="https://scrutinizer-ci.com/g/majiameng/uploads/badges/quality-score.png?b=master" alt="Scrutinizer Code Quality"></a>
+<a href="https://scrutinizer-ci.com/g/majiameng/uploads/build-status/master"><img src="https://scrutinizer-ci.com/g/majiameng/uploads/badges/build.png?b=master" alt="Build Status"></a>
+<a href="https://packagist.org/packages/tinymeng/uploads"><img src="https://poser.pugx.org/tinymeng/uploads/v/stable" alt="Latest Stable Version"></a>
+<a href="https://github.com/majiameng/uploads/tags"><img src="https://poser.pugx.org/tinymeng/uploads/downloads" alt="Total Downloads"></a>
+<a href="https://packagist.org/packages/tinymeng/uploads"><img src="https://poser.pugx.org/tinymeng/uploads/v/unstable" alt="Latest Unstable Version"></a>
+<a href="https://github.com/majiameng/uploads/blob/master/LICENSE"><img src="https://poser.pugx.org/tinymeng/uploads/license" alt="License"></a>
+</p>
 # 通用文件上传到第三方说明文档
 
 * oss 阿里云
