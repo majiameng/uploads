@@ -650,6 +650,7 @@ class Cos extends  Gateway
         return true;
     }
 
+ 
     /**
      * 获取当前文件的URL访问路径
      * @param  string $file 文件名
@@ -662,7 +663,6 @@ class Cos extends  Gateway
     {
         try {
             $file = static::normalizerPath($file);
-            
             // 如果配置了 urlPrefix 且不需要签名 URL，直接使用配置的 URL
             if ($expire_at == 0 && isset($this->config['urlPrefix'])) {
                 return rtrim($this->config['urlPrefix'], '/') . '/' . ltrim($file, '/');
@@ -670,15 +670,12 @@ class Cos extends  Gateway
             
             // 需要签名 URL 或没有配置 urlPrefix
             if ($expire_at > 0) {
-                $params = [
-                    'Bucket' => $this->bucket,
-                    'Key' => $file
-                ];
-                
-                // 生成预签名 URL
-                $command = $this->getClient()->getCommand('getObject', $params);
-                $request = $this->getClient()->createPresignedRequest($command, '+' . $expire_at . ' seconds');
-                return (string)$request->getUri();
+                // 须使用 COS SDK 官方 API：createPresignedRequest 不存在，误走 __call 会把 Command 当成数组参数导致 TypeError
+                return $this->getClient()->getObjectUrl(
+                    $this->bucket,
+                    $file,
+                    '+' . (int) $expire_at . ' seconds'
+                );
             } else {
                 // 没有配置 urlPrefix 且不需要签名，尝试使用 getObjectUrl
                 try {
