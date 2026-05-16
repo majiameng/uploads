@@ -40,6 +40,13 @@ class Cos extends  Gateway
     protected $bucket;
 
     /**
+     * 带自定义域名（urlPrefix）的 Client，仅用于预签名读链，与上传用 client 分离
+     *
+     * @var \Qcloud\Cos\Client|null
+     */
+    protected $presignClient = null;
+
+    /**
      * 构造方法
      *
      * @param array $config   配置信息
@@ -117,6 +124,51 @@ class Cos extends  Gateway
             $this->client = new Client($config);
         }
         return $this->client;
+    }
+
+    /**
+     * 用于生成预签名 URL 的 COS Client：若配置了 urlPrefix，则设置 domain，使链接为自定义域名
+     */
+    protected function getPresignClient()
+    {
+        if ($this->presignClient !== null) {
+            return $this->presignClient;
+        }
+        if (empty($this->config['urlPrefix'])) {
+            $this->presignClient = $this->getClient();
+            return $this->presignClient;
+        }
+        $parsed = parse_url($this->config['urlPrefix']);
+        if (empty($parsed['host'])) {
+            $this->presignClient = $this->getClient();
+            return $this->presignClient;
+        }
+        if (empty($this->config['secretId']) || empty($this->config['secretKey'])) {
+            throw new TinymengException('COS配置错误：secretId 和 secretKey 不能为空');
+        }
+        if (empty($this->config['region'])) {
+            throw new TinymengException('COS配置错误：region 不能为空');
+        }
+        $schema = !empty($parsed['scheme'])
+            ? $parsed['scheme']
+            : (isset($this->config['transport']) && $this->config['transport'] === 'https' ? 'https' : 'http');
+        $cfg = [
+            'region' => $this->config['region'],
+            'schema' => $schema,
+            'domain' => $parsed['host'],
+            'credentials' => [
+                'secretId' => $this->config['secretId'],
+                'secretKey' => $this->config['secretKey'],
+            ],
+        ];
+        if (isset($this->config['timeout'])) {
+            $cfg['timeout'] = (int) $this->config['timeout'];
+        }
+        if (isset($this->config['connectTimeout'])) {
+            $cfg['connectTimeout'] = (int) $this->config['connectTimeout'];
+        }
+        $this->presignClient = new Client($cfg);
+        return $this->presignClient;
     }
 
     /**
@@ -650,7 +702,6 @@ class Cos extends  Gateway
         return true;
     }
 
- 
     /**
      * 获取当前文件的URL访问路径
      * @param  string $file 文件名
@@ -670,8 +721,8 @@ class Cos extends  Gateway
             
             // 需要签名 URL 或没有配置 urlPrefix
             if ($expire_at > 0) {
-                // 须使用 COS SDK 官方 API：createPresignedRequest 不存在，误走 __call 会把 Command 当成数组参数导致 TypeError
-                return $this->getClient()->getObjectUrl(
+                // 须使用官方 getObjectUrl；配置了 urlPrefix 时用 getPresignClient()，否则链接会变成 *.myqcloud.com
+                return $this->getPresignClient()->getObjectUrl(
                     $this->bucket,
                     $file,
                     '+' . (int) $expire_at . ' seconds'
